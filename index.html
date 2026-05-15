@@ -1,0 +1,1199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TaskBoard</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1565C0 0%, #0D47A1 100%);
+      min-height: 100vh;
+      overflow-x: auto;
+    }
+
+    /* ── Header ── */
+    header {
+      background: rgba(0,0,0,0.22);
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      backdrop-filter: blur(4px);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      flex-wrap: wrap;
+    }
+
+    .app-logo {
+      color: white;
+      font-size: 16px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .header-sep { color: rgba(255,255,255,0.3); }
+
+    .board-name-input {
+      color: white;
+      font-size: 15px;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: 4px;
+      border: none;
+      background: transparent;
+      outline: none;
+      font-family: inherit;
+      min-width: 60px;
+      max-width: 200px;
+    }
+    .board-name-input:focus,
+    .board-name-input:hover { background: rgba(255,255,255,0.15); }
+
+    /* Toolbar buttons */
+    .header-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .hbtn {
+      border: none;
+      border-radius: 6px;
+      padding: 7px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+      transition: background 0.15s, box-shadow 0.15s;
+    }
+
+    .hbtn-white {
+      background: white;
+      color: #0052cc;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.18);
+    }
+    .hbtn-white:hover { background: #f0f4ff; box-shadow: 0 2px 8px rgba(0,0,0,0.22); }
+
+    .hbtn-ghost {
+      background: rgba(255,255,255,0.2);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.25);
+    }
+    .hbtn-ghost:hover { background: rgba(255,255,255,0.3); }
+
+    .conn-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #aaa;
+      display: inline-block;
+      margin-right: 2px;
+      transition: background 0.3s;
+    }
+    .conn-dot.online  { background: #61bd4f; }
+    .conn-dot.offline { background: #eb5a46; }
+
+    /* ── Board ── */
+    .board {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 16px;
+      min-height: calc(100vh - 52px);
+      overflow-x: auto;
+    }
+
+    /* ── Column ── */
+    .column {
+      background: #ebecf0;
+      border-radius: 10px;
+      width: 272px;
+      min-width: 272px;
+      max-height: calc(100vh - 84px);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+
+    .column.drag-over { background: #dce0e8; outline: 2px dashed #0052cc; }
+
+    .col-header {
+      padding: 10px 8px 6px 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .col-title-input {
+      flex: 1;
+      font-size: 14px;
+      font-weight: 700;
+      color: #172b4d;
+      border: none;
+      background: transparent;
+      outline: none;
+      font-family: inherit;
+      border-radius: 4px;
+      padding: 3px 6px;
+      min-width: 0;
+    }
+    .col-title-input:focus { background: white; box-shadow: 0 0 0 2px #0052cc; }
+
+    .col-count {
+      font-size: 11px;
+      color: #5e6c84;
+      background: rgba(0,0,0,0.08);
+      border-radius: 10px;
+      padding: 1px 7px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .col-menu-btn {
+      background: none; border: none;
+      cursor: pointer; color: #6b778c;
+      font-size: 16px; padding: 3px 6px;
+      border-radius: 4px; line-height: 1;
+      letter-spacing: 2px; flex-shrink: 0;
+      transition: background 0.15s, color 0.15s;
+    }
+    .col-menu-btn:hover { background: rgba(0,0,0,0.09); color: #172b4d; }
+
+    /* Cards scroll area */
+    .cards-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 2px 8px;
+      min-height: 4px;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: white;
+      border-radius: 7px;
+      padding: 10px 12px 8px;
+      margin-bottom: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+      cursor: grab;
+      position: relative;
+      transition: box-shadow 0.18s, transform 0.1s;
+      word-break: break-word;
+    }
+    .card:hover { box-shadow: 0 4px 10px rgba(0,0,0,0.18); transform: translateY(-1px); }
+    .card:active { cursor: grabbing; }
+    .card.dragging { opacity: 0.4; transform: rotate(1.5deg); }
+    .card.drop-ph {
+      background: #c8d4e8;
+      border: 2px dashed #7ab0e8;
+      height: 44px; box-shadow: none;
+      cursor: default;
+    }
+
+    .card-labels { display: flex; gap: 4px; margin-bottom: 6px; flex-wrap: wrap; }
+    .card-label  { height: 8px; border-radius: 4px; width: 42px; }
+
+    .card-title { font-size: 14px; color: #172b4d; line-height: 1.45; }
+
+    .card-desc-preview {
+      font-size: 12px; color: #5e6c84;
+      margin-top: 4px; line-height: 1.35;
+    }
+
+    .card-meta { display: flex; gap: 7px; margin-top: 7px; flex-wrap: wrap; align-items: center; }
+
+    .card-due {
+      font-size: 11px; color: #5e6c84;
+      background: #f0f1f3; padding: 2px 7px;
+      border-radius: 3px;
+    }
+    .card-due.overdue { background: #ffebe6; color: #bf2600; }
+    .card-due.soon    { background: #fff7d6; color: #974f0c; }
+
+    /* Card ··· button */
+    .card-menu-btn {
+      position: absolute; top: 6px; right: 6px;
+      background: rgba(9,30,66,0.07);
+      border: none; border-radius: 4px;
+      padding: 2px 7px; cursor: pointer;
+      font-size: 13px; color: #5e6c84;
+      line-height: 1.4; letter-spacing: 1px;
+      opacity: 0; transition: opacity 0.15s, background 0.15s;
+    }
+    .card:hover .card-menu-btn { opacity: 1; }
+    .card-menu-btn:hover { background: rgba(9,30,66,0.16); color: #172b4d; }
+
+    /* ── Add card button ── */
+    .add-card-btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 8px 12px; margin: 4px 8px 8px;
+      border: none; background: transparent;
+      color: #5e6c84; font-size: 14px;
+      cursor: pointer; border-radius: 7px;
+      width: calc(100% - 16px);
+      transition: background 0.15s, color 0.15s;
+      font-family: inherit;
+    }
+    .add-card-btn:hover { background: rgba(0,0,0,0.07); color: #172b4d; }
+
+    /* Quick-add textarea */
+    .quick-add { padding: 2px 8px 8px; }
+    .quick-add textarea {
+      width: 100%; border: none; border-radius: 7px;
+      padding: 10px 12px; font-size: 14px;
+      font-family: inherit; color: #172b4d;
+      resize: none; min-height: 68px;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.18); outline: none;
+    }
+    .qa-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+
+    /* ── Buttons ── */
+    .btn-primary {
+      background: #0052cc; color: white;
+      border: none; border-radius: 5px;
+      padding: 7px 14px; font-size: 14px; font-weight: 600;
+      cursor: pointer; font-family: inherit;
+      transition: background 0.15s; white-space: nowrap;
+    }
+    .btn-primary:hover { background: #0065ff; }
+
+    .btn-icon {
+      background: none; border: none;
+      color: #5e6c84; font-size: 20px;
+      cursor: pointer; padding: 3px 7px;
+      border-radius: 5px; font-family: inherit;
+      transition: background 0.15s, color 0.15s;
+    }
+    .btn-icon:hover { background: rgba(0,0,0,0.07); color: #172b4d; }
+
+    .btn-danger {
+      background: none; border: none; color: #bf2600;
+      font-size: 14px; cursor: pointer;
+      padding: 7px 12px; border-radius: 5px;
+      font-family: inherit; transition: background 0.15s;
+    }
+    .btn-danger:hover { background: #ffebe6; }
+
+    /* ── Dropdown ── */
+    .dropdown {
+      position: fixed; background: white;
+      border-radius: 7px; box-shadow: 0 8px 28px rgba(0,0,0,0.2);
+      z-index: 200; min-width: 180px; padding: 5px 0;
+    }
+    .dd-item {
+      padding: 8px 16px; font-size: 14px;
+      color: #172b4d; cursor: pointer;
+      transition: background 0.1s;
+    }
+    .dd-item:hover { background: #f4f5f7; }
+    .dd-item.red { color: #bf2600; }
+    .dd-item.red:hover { background: #ffebe6; }
+    .dd-sep { border: none; border-top: 1px solid #ebecf0; margin: 4px 0; }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex; align-items: flex-start;
+      justify-content: center;
+      padding: 48px 16px 32px;
+      z-index: 100; overflow-y: auto;
+    }
+    .modal {
+      background: #f4f5f7; border-radius: 10px;
+      width: 100%; max-width: 580px;
+      padding: 24px; position: relative;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+    }
+    .modal-sm {
+      background: #f4f5f7; border-radius: 10px;
+      width: 100%; max-width: 380px;
+      padding: 24px; position: relative;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+    }
+    .modal-close {
+      position: absolute; top: 12px; right: 12px;
+      background: none; border: none; font-size: 18px;
+      cursor: pointer; color: #6b778c;
+      padding: 4px 8px; border-radius: 4px;
+      transition: background 0.15s;
+    }
+    .modal-close:hover { background: rgba(0,0,0,0.09); }
+
+    .modal h2 { font-size: 17px; font-weight: 700; color: #172b4d; margin-bottom: 16px; }
+    .modal-subtitle { font-size: 12px; color: #5e6c84; margin-bottom: 18px; }
+    .modal-subtitle strong { color: #344563; }
+
+    .field-label {
+      font-size: 11px; font-weight: 700;
+      text-transform: uppercase; color: #5e6c84;
+      letter-spacing: 0.5px; margin-bottom: 7px;
+    }
+    .f-section { margin-bottom: 16px; }
+
+    .f-input {
+      width: 100%; border: 2px solid #dfe1e6;
+      border-radius: 5px; padding: 8px 10px;
+      font-size: 14px; color: #172b4d;
+      background: white; outline: none;
+      font-family: inherit; transition: border-color 0.15s;
+    }
+    .f-input:focus { border-color: #0052cc; }
+    textarea.f-input { resize: vertical; min-height: 78px; }
+
+    .modal-footer {
+      display: flex; justify-content: space-between;
+      align-items: center; margin-top: 6px;
+    }
+
+    /* Label picker */
+    .label-picker { display: flex; gap: 7px; flex-wrap: wrap; }
+    .label-opt {
+      width: 40px; height: 24px; border-radius: 5px;
+      cursor: pointer; border: 3px solid transparent;
+      transition: border-color 0.12s, transform 0.1s;
+    }
+    .label-opt:hover { transform: scale(1.1); }
+    .label-opt.on { border-color: #172b4d; }
+
+    /* BG color picker */
+    .bg-picker { display: flex; gap: 6px; flex-wrap: wrap; }
+    .bg-opt {
+      width: 32px; height: 22px; border-radius: 4px;
+      cursor: pointer; border: 3px solid transparent;
+      transition: border-color 0.12s, transform 0.1s;
+    }
+    .bg-opt:hover { transform: scale(1.1); }
+    .bg-opt.on { border-color: #172b4d; }
+    .bg-opt.none-opt {
+      background: white; border: 2px solid #ccc;
+      font-size: 9px; color: #666;
+      display: flex; align-items: center;
+      justify-content: center; font-weight: 700;
+    }
+    .bg-opt.none-opt.on { border-color: #172b4d; }
+
+    /* Board color row */
+    .board-color-row { display: flex; gap: 7px; flex-wrap: wrap; }
+    .board-color-opt {
+      width: 40px; height: 26px; border-radius: 5px;
+      cursor: pointer; border: 3px solid transparent;
+      transition: border-color 0.12s, transform 0.1s;
+    }
+    .board-color-opt:hover { transform: scale(1.08); }
+    .board-color-opt.on { border-color: #172b4d; }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 28px; left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #172b4d; color: white;
+      padding: 9px 20px; border-radius: 6px;
+      font-size: 14px; z-index: 400;
+      transition: transform 0.28s;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+      pointer-events: none;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+
+    .empty-col { text-align: center; padding: 14px; color: #b0b8c9; font-size: 13px; }
+
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.18); border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="app-logo">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <rect x="2" y="4" width="8" height="16" rx="2" fill="white" opacity="0.9"/>
+      <rect x="13" y="4" width="9" height="10" rx="2" fill="white" opacity="0.7"/>
+    </svg>
+    TaskBoard
+  </div>
+  <span class="header-sep">/</span>
+  <input class="board-name-input" id="boardNameInput" maxlength="60" value="My Workspace" />
+
+  <div class="header-right">
+    <!-- ปุ่ม Add List — เด่นใน header -->
+    <button class="hbtn hbtn-white" id="addListBtn" title="เพิ่ม List ใหม่">
+      <span style="font-size:16px;line-height:1">＋</span> Add List
+    </button>
+    <!-- ปุ่ม New Board -->
+    <button class="hbtn hbtn-white" id="newBoardBtn" title="สร้าง Board ใหม่">
+      📋 New Board
+    </button>
+    <!-- Connection + Share -->
+    <span style="display:flex;align-items:center;gap:4px;cursor:default" title="Sync status">
+      <span class="conn-dot" id="connDot"></span>
+      <span style="color:rgba(255,255,255,0.6);font-size:12px;" id="connLabel">–</span>
+    </span>
+    <button class="hbtn hbtn-ghost" id="shareBtn">🔗 Share</button>
+  </div>
+</header>
+
+<main class="board" id="board"></main>
+<div class="toast" id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script>
+// ─── Firebase ────────────────────────────────────────────────────────────────
+const fbConfig = {
+  apiKey: "AIzaSyD5ukP9VFM8BT-umWMgQkaPODao2qh4QEI",
+  authDomain: "breezy-by-mp.firebaseapp.com",
+  databaseURL: "https://breezy-by-mp-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "breezy-by-mp",
+  storageBucket: "breezy-by-mp.firebasestorage.app",
+  messagingSenderId: "470137414471",
+  appId: "1:470137414471:web:feb38f8927a314d8c0e262"
+};
+
+let db, boardRef;
+let firebaseOk = false;
+
+try {
+  firebase.initializeApp(fbConfig);
+  db = firebase.database();
+  firebaseOk = true;
+} catch(e) {
+  console.warn('Firebase init failed, using localStorage only');
+}
+
+// ─── Constants ───────────────────────────────────────────────────────────────
+const LABEL_COLORS = ['#61bd4f','#f2d600','#ff9f1a','#eb5a46','#c377e0',
+                      '#0079bf','#00c2e0','#51e898','#ff78cb','#344563'];
+const BG_COLORS    = ['','#d4edda','#fff3cd','#fde8d0','#fde8e8',
+                      '#ede8f8','#dbeafe','#d0f4f4','#fce4ec'];
+const BOARD_BKGS   = ['#1565C0','#0D6E3F','#6B46C1','#B83280','#C05621','#065666','#1A3A5C'];
+
+// ─── State ───────────────────────────────────────────────────────────────────
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+
+function defaultState() {
+  return {
+    boardName: 'My Workspace',
+    columns: [
+      { id: uid(), title: 'To Do', cards: [
+          { id: uid(), title: 'Plan project scope', desc: '', labels: ['#0079bf'], due: '', bgColor: '' },
+          { id: uid(), title: 'Gather requirements', desc: '', labels: [], due: '', bgColor: '' },
+        ]},
+      { id: uid(), title: 'In Progress', cards: [
+          { id: uid(), title: 'Design wireframes', desc: '', labels: ['#f2d600'], due: '', bgColor: '' },
+        ]},
+      { id: uid(), title: 'Review', cards: [] },
+      { id: uid(), title: 'Done', cards: [
+          { id: uid(), title: 'Kickoff meeting', desc: '', labels: ['#61bd4f'], due: '', bgColor: '' },
+        ]},
+    ]
+  };
+}
+
+let state = null;
+let BOARD_ID = (location.hash.slice(1).toUpperCase().replace(/[^A-Z0-9]/g,'') || 'MAIN');
+
+// ─── Persistence ─────────────────────────────────────────────────────────────
+function lsKey() { return 'tb_' + BOARD_ID; }
+
+function saveLocal() {
+  try { localStorage.setItem(lsKey(), JSON.stringify(state)); } catch(e) {}
+}
+
+function loadLocal() {
+  try { return JSON.parse(localStorage.getItem(lsKey())); } catch(e) { return null; }
+}
+
+function save() {
+  if (!state) return;
+  saveLocal();
+  if (firebaseOk && boardRef) {
+    boardRef.set(state).catch(err => console.warn('Firebase save failed:', err));
+  }
+}
+
+// ─── Firebase sync ────────────────────────────────────────────────────────────
+function startSync() {
+  if (!firebaseOk) return;
+  boardRef = db.ref('boards/' + BOARD_ID);
+
+  boardRef.on('value', snap => {
+    const data = snap.val();
+    if (data) {
+      state = normalize(data); // แปลง object กลับเป็น array
+      saveLocal();
+      render();
+    }
+  }, err => console.warn('Firebase read error:', err));
+
+  db.ref('.info/connected').on('value', snap => {
+    const on = snap.val();
+    const dot = document.getElementById('connDot');
+    const lbl = document.getElementById('connLabel');
+    if (dot) dot.className = 'conn-dot ' + (on ? 'online' : 'offline');
+    if (lbl) lbl.textContent = on ? 'Live' : 'Offline';
+  });
+}
+
+// ─── Normalize ────────────────────────────────────────────────────────────────
+// Firebase stores arrays as objects {0:…,1:…} — convert back to real arrays
+function toArr(v) {
+  if (!v) return [];
+  if (Array.isArray(v)) return v;
+  return Object.keys(v).sort((a,b) => Number(a)-Number(b)).map(k => v[k]);
+}
+
+function normalize(data) {
+  if (!data) return defaultState();
+  data.columns = toArr(data.columns).map(col => {
+    col.cards = toArr(col.cards).map(card => ({
+      id: card.id || uid(),
+      title: card.title || '',
+      desc: card.desc || '',
+      labels: toArr(card.labels),
+      due: card.due || '',
+      bgColor: card.bgColor || ''
+    }));
+    return col;
+  });
+  return data;
+}
+
+// ─── Boot ─────────────────────────────────────────────────────────────────────
+function boot() {
+  const local = loadLocal();
+  state = normalize(local || defaultState());
+  if (!local) save();
+  render();
+  startSync();
+}
+
+// ─── Drag state ───────────────────────────────────────────────────────────────
+let dragCardId = null, dragSrcColId = null, ph = null;
+
+// ─── Render ───────────────────────────────────────────────────────────────────
+function render() {
+  if (!state) return;
+  state = normalize(state); // รับประกันว่า columns/cards เป็น array เสมอ
+  document.getElementById('boardNameInput').value = state.boardName || '';
+  const board = document.getElementById('board');
+  board.innerHTML = '';
+  state.columns.forEach(col => board.appendChild(buildColumn(col)));
+}
+
+// ─── Column ───────────────────────────────────────────────────────────────────
+function buildColumn(col) {
+  const wrap = document.createElement('div');
+  wrap.className = 'column';
+  wrap.dataset.colId = col.id;
+
+  // Header
+  const hdr = document.createElement('div');
+  hdr.className = 'col-header';
+
+  const titleEl = document.createElement('input');
+  titleEl.className = 'col-title-input';
+  titleEl.value = col.title;
+  titleEl.maxLength = 80;
+  titleEl.addEventListener('change', () => { col.title = titleEl.value || col.title; save(); });
+  titleEl.addEventListener('keydown', e => { if (e.key === 'Enter') titleEl.blur(); });
+
+  const countEl = document.createElement('span');
+  countEl.className = 'col-count';
+  countEl.textContent = col.cards.length;
+
+  const menuBtn = document.createElement('button');
+  menuBtn.className = 'col-menu-btn';
+  menuBtn.textContent = '···';
+  menuBtn.addEventListener('click', e => showColMenu(e, col));
+
+  hdr.append(titleEl, countEl, menuBtn);
+
+  // Cards area
+  const area = document.createElement('div');
+  area.className = 'cards-area';
+
+  if (!col.cards.length) {
+    const empty = document.createElement('div');
+    empty.className = 'empty-col';
+    empty.textContent = 'No cards yet';
+    area.appendChild(empty);
+  }
+
+  col.cards.forEach(card => area.appendChild(buildCard(card, col.id)));
+
+  // Drop events
+  area.addEventListener('dragover', e => {
+    e.preventDefault();
+    wrap.classList.add('drag-over');
+    movePh(area, getDragAfter(area, e.clientY));
+  });
+  area.addEventListener('dragleave', e => {
+    if (!wrap.contains(e.relatedTarget)) wrap.classList.remove('drag-over');
+  });
+  area.addEventListener('drop', e => {
+    e.preventDefault();
+    wrap.classList.remove('drag-over');
+    commitDrop(col.id);
+  });
+
+  // Add card button
+  const addBtn = document.createElement('button');
+  addBtn.className = 'add-card-btn';
+  addBtn.innerHTML = '<span style="font-size:17px;line-height:1">+</span> Add a card';
+  addBtn.addEventListener('click', () => showQuickAdd(wrap, col));
+
+  wrap.append(hdr, area, addBtn);
+  return wrap;
+}
+
+// ─── Card ─────────────────────────────────────────────────────────────────────
+function buildCard(card, colId) {
+  const el = document.createElement('div');
+  el.className = 'card';
+  el.draggable = true;
+  el.dataset.cardId = card.id;
+  if (card.bgColor) el.style.background = card.bgColor;
+
+  if (card.labels && card.labels.length) {
+    const labelsEl = document.createElement('div');
+    labelsEl.className = 'card-labels';
+    card.labels.forEach(c => {
+      const l = document.createElement('div');
+      l.className = 'card-label';
+      l.style.background = c;
+      labelsEl.appendChild(l);
+    });
+    el.appendChild(labelsEl);
+  }
+
+  const titleEl = document.createElement('div');
+  titleEl.className = 'card-title';
+  titleEl.textContent = card.title;
+  el.appendChild(titleEl);
+
+  if (card.desc) {
+    const d = document.createElement('div');
+    d.className = 'card-desc-preview';
+    d.textContent = card.desc.length > 80 ? card.desc.slice(0,80) + '…' : card.desc;
+    el.appendChild(d);
+  }
+
+  if (card.due) {
+    const meta = document.createElement('div');
+    meta.className = 'card-meta';
+    const dueEl = document.createElement('span');
+    dueEl.className = 'card-due ' + dueClass(card.due);
+    dueEl.textContent = '📅 ' + fmtDate(card.due);
+    meta.appendChild(dueEl);
+    el.appendChild(meta);
+  }
+
+  // ··· menu button
+  const menuBtn = document.createElement('button');
+  menuBtn.className = 'card-menu-btn';
+  menuBtn.textContent = '···';
+  menuBtn.addEventListener('click', e => { e.stopPropagation(); showCardMenu(e, card, colId); });
+  el.appendChild(menuBtn);
+
+  el.addEventListener('click', () => openCardModal(card, colId));
+
+  el.addEventListener('dragstart', e => {
+    dragCardId = card.id; dragSrcColId = colId;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', card.id);
+    setTimeout(() => el.classList.add('dragging'), 0);
+  });
+  el.addEventListener('dragend', () => {
+    el.classList.remove('dragging');
+    removePh();
+    document.querySelectorAll('.column').forEach(c => c.classList.remove('drag-over'));
+    dragCardId = null; dragSrcColId = null;
+  });
+
+  return el;
+}
+
+// ─── Placeholder drag ────────────────────────────────────────────────────────
+function getOrCreatePh() {
+  if (!ph) { ph = document.createElement('div'); ph.className = 'card drop-ph'; ph.style.pointerEvents = 'none'; }
+  return ph;
+}
+function removePh() { if (ph && ph.parentNode) ph.parentNode.removeChild(ph); }
+function movePh(container, afterEl) {
+  const p = getOrCreatePh();
+  if (afterEl == null) container.appendChild(p);
+  else if (afterEl !== p.nextSibling) container.insertBefore(p, afterEl);
+}
+function getDragAfter(container, y) {
+  const cards = [...container.querySelectorAll('.card:not(.dragging):not(.drop-ph)')];
+  let closest = null, best = Number.NEGATIVE_INFINITY;
+  for (const c of cards) {
+    const offset = y - c.getBoundingClientRect().top - c.getBoundingClientRect().height / 2;
+    if (offset < 0 && offset > best) { best = offset; closest = c; }
+  }
+  return closest;
+}
+function commitDrop(dstColId) {
+  if (!dragCardId) return;
+  const src = state.columns.find(c => c.id === dragSrcColId);
+  const dst = state.columns.find(c => c.id === dstColId);
+  if (!src || !dst) return;
+  const idx = src.cards.findIndex(c => c.id === dragCardId);
+  if (idx === -1) return;
+  const [card] = src.cards.splice(idx, 1);
+
+  let insertIdx = dst.cards.length;
+  if (ph && ph.parentNode) {
+    const sibs = [...ph.parentNode.children];
+    const before = sibs.slice(sibs.indexOf(ph) + 1)
+      .find(el => el.classList.contains('card') && !el.classList.contains('drop-ph'));
+    if (before) {
+      const i = dst.cards.findIndex(c => c.id === before.dataset.cardId);
+      if (i >= 0) insertIdx = i;
+    }
+  }
+  dst.cards.splice(insertIdx, 0, card);
+  save(); render();
+}
+
+// ─── Quick-add card ──────────────────────────────────────────────────────────
+function showQuickAdd(colWrap, col) {
+  const existing = colWrap.querySelector('.quick-add');
+  if (existing) { existing.querySelector('textarea').focus(); return; }
+
+  const form = document.createElement('div');
+  form.className = 'quick-add';
+
+  const ta = document.createElement('textarea');
+  ta.placeholder = 'Enter a title for this card…';
+
+  const row = document.createElement('div');
+  row.className = 'qa-row';
+
+  const okBtn = document.createElement('button');
+  okBtn.className = 'btn-primary'; okBtn.textContent = 'Add card';
+
+  const xBtn = document.createElement('button');
+  xBtn.className = 'btn-icon'; xBtn.textContent = '✕';
+
+  row.append(okBtn, xBtn);
+  form.append(ta, row);
+  colWrap.querySelector('.add-card-btn').before(form);
+  ta.focus();
+
+  function submit() {
+    const title = ta.value.trim();
+    if (!title) { ta.focus(); return; }
+    col.cards.push({ id: uid(), title, desc: '', labels: [], due: '', bgColor: '' });
+    save(); render();
+  }
+
+  okBtn.addEventListener('click', submit);
+  xBtn.addEventListener('click', () => form.remove());
+  ta.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); }
+    if (e.key === 'Escape') form.remove();
+  });
+}
+
+// ─── Add List Modal (เรียกจากปุ่ม header) ───────────────────────────────────
+document.getElementById('addListBtn').addEventListener('click', () => {
+  showAddListModal();
+});
+
+function showAddListModal() {
+  const overlay = makeOverlay();
+  const modal = document.createElement('div');
+  modal.className = 'modal-sm';
+  modal.innerHTML = `
+    <button class="modal-close" id="alClose">✕</button>
+    <h2>📑 Add List</h2>
+    <div class="f-section">
+      <div class="field-label">List Name</div>
+      <input class="f-input" id="alName" placeholder="e.g. To Do, In Progress, Done…" maxlength="80" />
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn-icon" id="alCancel" style="font-size:14px;padding:7px 12px">Cancel</button>
+      <button class="btn-primary" id="alOk">Add List</button>
+    </div>
+  `;
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+
+  const input = modal.querySelector('#alName');
+  input.focus();
+
+  function close() { overlay.remove(); }
+  modal.querySelector('#alClose').addEventListener('click', close);
+  modal.querySelector('#alCancel').addEventListener('click', close);
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+
+  function submit() {
+    const title = input.value.trim();
+    if (!title) { input.focus(); return; }
+    try {
+      state = normalize(state);
+      state.columns.push({ id: uid(), title, cards: [] });
+      save();
+      close();
+      render();
+      toast('List "' + title + '" added ✓');
+      setTimeout(() => { document.getElementById('board').scrollLeft = 99999; }, 60);
+    } catch(err) {
+      console.error('Add list error:', err);
+      toast('Error: ' + err.message);
+    }
+  }
+
+  modal.querySelector('#alOk').addEventListener('click', submit);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') submit();
+    if (e.key === 'Escape') close();
+  });
+}
+
+// ─── New Board Modal ─────────────────────────────────────────────────────────
+document.getElementById('newBoardBtn').addEventListener('click', () => {
+  showNewBoardModal();
+});
+
+function showNewBoardModal() {
+  let selBg = BOARD_BKGS[0];
+  const overlay = makeOverlay();
+  const modal = document.createElement('div');
+  modal.className = 'modal-sm';
+  modal.innerHTML = `
+    <button class="modal-close" id="nbClose">✕</button>
+    <h2>📋 New Board</h2>
+    <div class="f-section">
+      <div class="field-label">Board Name</div>
+      <input class="f-input" id="nbName" placeholder="e.g. Marketing, Sprint 1…" maxlength="60" />
+    </div>
+    <div class="f-section">
+      <div class="field-label">Background Color</div>
+      <div class="board-color-row" id="nbColors">
+        ${BOARD_BKGS.map((c,i) => `<div class="board-color-opt${i===0?' on':''}" style="background:${c}" data-c="${c}"></div>`).join('')}
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn-icon" id="nbCancel" style="font-size:14px;padding:7px 12px">Cancel</button>
+      <button class="btn-primary" id="nbOk">Create Board</button>
+    </div>
+  `;
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+
+  modal.querySelectorAll('.board-color-opt').forEach(o => {
+    o.addEventListener('click', () => {
+      modal.querySelectorAll('.board-color-opt').forEach(x => x.classList.remove('on'));
+      o.classList.add('on');
+      selBg = o.dataset.c;
+    });
+  });
+
+  function close() { overlay.remove(); }
+  modal.querySelector('#nbClose').addEventListener('click', close);
+  modal.querySelector('#nbCancel').addEventListener('click', close);
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+
+  const input = modal.querySelector('#nbName');
+  input.focus();
+
+  modal.querySelector('#nbOk').addEventListener('click', () => {
+    const name = input.value.trim();
+    if (!name) { input.focus(); return; }
+    const newId = name.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,10)
+                + Math.random().toString(36).slice(2,5).toUpperCase();
+    close();
+    switchBoard(newId, name, selBg);
+  });
+
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') modal.querySelector('#nbOk').click();
+    if (e.key === 'Escape') close();
+  });
+}
+
+function switchBoard(newId, boardName, bg) {
+  if (firebaseOk && boardRef) boardRef.off();
+  BOARD_ID = newId;
+  boardRef = firebaseOk ? db.ref('boards/' + BOARD_ID) : null;
+  history.replaceState(null, '', location.pathname + '#' + BOARD_ID);
+
+  document.body.style.backgroundImage = 'none';
+  document.body.style.background = bg || 'linear-gradient(135deg,#1565C0,#0D47A1)';
+
+  const local = loadLocal();
+  state = normalize(local || defaultState());
+  if (!local && boardName) state.boardName = boardName;
+  if (!local) save();
+  render();
+  if (firebaseOk) startSync();
+  toast('Board: ' + (state.boardName || newId));
+}
+
+// ─── Column menu ─────────────────────────────────────────────────────────────
+let activeDd = null;
+function closeDropdown() { if (activeDd) { activeDd.remove(); activeDd = null; } }
+
+function showColMenu(e, col) {
+  closeDropdown();
+  const rect = e.currentTarget.getBoundingClientRect();
+  const dd = document.createElement('div');
+  dd.className = 'dropdown';
+  dd.style.top  = (rect.bottom + 4) + 'px';
+  dd.style.left = rect.left + 'px';
+
+  [
+    { label: 'Sort A → Z', fn: () => { col.cards.sort((a,b)=>a.title.localeCompare(b.title)); save(); render(); toast('Sorted'); }},
+    { label: 'Sort Z → A', fn: () => { col.cards.sort((a,b)=>b.title.localeCompare(a.title)); save(); render(); toast('Sorted'); }},
+    { label: 'Clear all cards', fn: () => {
+        if (!confirm('Remove all cards?')) return;
+        col.cards = []; save(); render(); toast('Cleared');
+    }},
+    { sep: true },
+    { label: 'Delete this list', red: true, fn: () => {
+        if (!confirm('Delete list and all cards?')) return;
+        state.columns = state.columns.filter(c => c.id !== col.id);
+        save(); render(); toast('List deleted');
+    }},
+  ].forEach(item => {
+    if (item.sep) {
+      const s = document.createElement('hr');
+      s.className = 'dd-sep';
+      dd.appendChild(s);
+      return;
+    }
+    const div = document.createElement('div');
+    div.className = 'dd-item' + (item.red ? ' red' : '');
+    div.textContent = item.label;
+    div.addEventListener('click', () => { closeDropdown(); item.fn(); });
+    dd.appendChild(div);
+  });
+
+  document.body.appendChild(dd);
+  activeDd = dd;
+  setTimeout(() => document.addEventListener('click', closeDropdown, { once: true }), 0);
+}
+
+// ─── Card ··· menu ────────────────────────────────────────────────────────────
+function showCardMenu(e, card, colId) {
+  closeDropdown();
+  const rect = e.currentTarget.getBoundingClientRect();
+  const dd = document.createElement('div');
+  dd.className = 'dropdown';
+  dd.style.top  = (rect.bottom + 4) + 'px';
+  dd.style.left = (rect.right - 180) + 'px';
+
+  [
+    { label: '✏️  Edit card', fn: () => openCardModal(card, colId) },
+    { label: '🗑️  Delete card', red: true, fn: () => {
+        if (!confirm('Delete this card?')) return;
+        const col = state.columns.find(c => c.id === colId);
+        col.cards = col.cards.filter(c => c.id !== card.id);
+        save(); render(); toast('Card deleted');
+    }},
+  ].forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'dd-item' + (item.red ? ' red' : '');
+    div.textContent = item.label;
+    div.addEventListener('click', () => { closeDropdown(); item.fn(); });
+    dd.appendChild(div);
+  });
+
+  document.body.appendChild(dd);
+  activeDd = dd;
+  setTimeout(() => document.addEventListener('click', closeDropdown, { once: true }), 0);
+}
+
+// ─── Card modal ───────────────────────────────────────────────────────────────
+function openCardModal(card, colId) {
+  const col = state.columns.find(c => c.id === colId);
+  const overlay = makeOverlay();
+  const modal = document.createElement('div');
+  modal.className = 'modal';
+
+  modal.innerHTML = `
+    <button class="modal-close" id="cmClose">✕</button>
+    <h2>${esc(card.title)}</h2>
+    <p class="modal-subtitle">in list <strong>${esc(col.title)}</strong></p>
+
+    <div class="f-section">
+      <div class="field-label">Title</div>
+      <input class="f-input" id="cmTitle" value="${esc(card.title)}" maxlength="200" />
+    </div>
+    <div class="f-section">
+      <div class="field-label">Description</div>
+      <textarea class="f-input" id="cmDesc" placeholder="Add details…">${esc(card.desc)}</textarea>
+    </div>
+    <div class="f-section">
+      <div class="field-label">Due date</div>
+      <input class="f-input" id="cmDue" type="date" value="${card.due||''}" style="max-width:200px" />
+    </div>
+    <div class="f-section">
+      <div class="field-label">Labels</div>
+      <div class="label-picker">
+        ${LABEL_COLORS.map(c=>`<div class="label-opt${(card.labels||[]).includes(c)?' on':''}" style="background:${c}" data-c="${c}"></div>`).join('')}
+      </div>
+    </div>
+    <div class="f-section">
+      <div class="field-label">Card Color</div>
+      <div class="bg-picker">
+        <div class="bg-opt none-opt${!card.bgColor?' on':''}" data-bg="">None</div>
+        ${BG_COLORS.filter(c=>c).map(c=>`<div class="bg-opt${card.bgColor===c?' on':''}" style="background:${c}" data-bg="${c}"></div>`).join('')}
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-danger" id="cmDelete">🗑 Delete card</button>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn-icon" id="cmCancel" style="font-size:14px;padding:7px 12px">Cancel</button>
+        <button class="btn-primary" id="cmSave">Save</button>
+      </div>
+    </div>
+  `;
+
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+
+  modal.querySelectorAll('.label-opt').forEach(o => o.addEventListener('click', () => o.classList.toggle('on')));
+  modal.querySelectorAll('.bg-opt').forEach(o => o.addEventListener('click', () => {
+    modal.querySelectorAll('.bg-opt').forEach(x => x.classList.remove('on'));
+    o.classList.add('on');
+  }));
+
+  function close() { overlay.remove(); }
+  modal.querySelector('#cmClose').addEventListener('click', close);
+  modal.querySelector('#cmCancel').addEventListener('click', close);
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+
+  modal.querySelector('#cmSave').addEventListener('click', () => {
+    const title = modal.querySelector('#cmTitle').value.trim();
+    if (!title) return;
+    card.title = title;
+    card.desc  = modal.querySelector('#cmDesc').value.trim();
+    card.due   = modal.querySelector('#cmDue').value;
+    card.labels= [...modal.querySelectorAll('.label-opt.on')].map(o=>o.dataset.c);
+    card.bgColor= modal.querySelector('.bg-opt.on')?.dataset.bg || '';
+    save(); render(); close(); toast('Saved ✓');
+  });
+
+  modal.querySelector('#cmDelete').addEventListener('click', () => {
+    if (!confirm('Delete this card?')) return;
+    col.cards = col.cards.filter(c => c.id !== card.id);
+    save(); render(); close(); toast('Card deleted');
+  });
+
+  modal.querySelector('#cmTitle').focus();
+}
+
+// ─── Share modal ──────────────────────────────────────────────────────────────
+document.getElementById('shareBtn').addEventListener('click', () => {
+  const overlay = makeOverlay();
+  const modal = document.createElement('div');
+  modal.className = 'modal-sm';
+  modal.innerHTML = `
+    <button class="modal-close" id="shClose">✕</button>
+    <h2>🔗 Share Board</h2>
+    <div class="f-section">
+      <div class="field-label">Current Board ID</div>
+      <div style="display:flex;gap:8px;align-items:center;background:white;border:2px solid #dfe1e6;border-radius:5px;padding:8px 12px">
+        <span style="flex:1;font-size:18px;font-weight:700;color:#0052cc;letter-spacing:2px" id="shId">${BOARD_ID}</span>
+        <button class="btn-primary" style="padding:5px 10px;font-size:12px" id="shCopy">Copy</button>
+      </div>
+    </div>
+    <div style="background:#e8f0fe;border-radius:7px;padding:12px 14px;font-size:13px;color:#344563;line-height:1.7;margin-bottom:16px">
+      <strong>วิธีแชร์:</strong><br>
+      1. ส่งไฟล์ taskboard.html ให้เพื่อน<br>
+      2. บอก Board ID ด้านบน<br>
+      3. เพื่อนเปิดไฟล์ → ใส่ Board ID ด้านล่าง
+    </div>
+    <div class="f-section">
+      <div class="field-label">Switch to another board</div>
+      <div style="display:flex;gap:8px">
+        <input class="f-input" id="shSwitch" placeholder="Enter Board ID…" style="text-transform:uppercase" />
+        <button class="btn-primary" id="shJoin">Join</button>
+      </div>
+    </div>
+  `;
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+
+  function close() { overlay.remove(); }
+  modal.querySelector('#shClose').addEventListener('click', close);
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+
+  modal.querySelector('#shCopy').addEventListener('click', () => {
+    navigator.clipboard.writeText(BOARD_ID).then(() => toast('Copied!')).catch(()=>{});
+  });
+
+  const switchInput = modal.querySelector('#shSwitch');
+  modal.querySelector('#shJoin').addEventListener('click', () => {
+    const newId = switchInput.value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
+    if (!newId || newId === BOARD_ID) { close(); return; }
+    close();
+    switchBoard(newId, null, null);
+  });
+  switchInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') modal.querySelector('#shJoin').click();
+  });
+  switchInput.addEventListener('input', e => {
+    e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
+  });
+});
+
+// ─── Board name ───────────────────────────────────────────────────────────────
+document.getElementById('boardNameInput').addEventListener('change', e => {
+  if (!state) return;
+  state.boardName = e.target.value || 'My Workspace';
+  save();
+});
+document.getElementById('boardNameInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') e.target.blur();
+});
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function makeOverlay() {
+  const o = document.createElement('div');
+  o.className = 'modal-overlay';
+  return o;
+}
+
+function esc(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function dueClass(due) {
+  const diff = (new Date(due+'T00:00:00') - new Date()) / 86400000;
+  return diff < 0 ? 'overdue' : diff < 2 ? 'soon' : '';
+}
+
+function fmtDate(due) {
+  return new Date(due+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
+}
+
+let toastTimer;
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ─── Start ────────────────────────────────────────────────────────────────────
+boot();
+</script>
+</body>
+</html>
