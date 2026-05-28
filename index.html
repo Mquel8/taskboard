@@ -453,10 +453,14 @@ function normalize(data) {
 function lsKey() { return 'tb_' + BOARD_ID; }
 function saveLocal() { try { localStorage.setItem(lsKey(), JSON.stringify(state)); } catch(e) {} }
 function loadLocal() { try { return JSON.parse(localStorage.getItem(lsKey())); } catch(e) { return null; } }
+let suppressSyncUntil = 0;
 function save() {
   if (!state) return;
   saveLocal();
-  if (firebaseOk && boardRef) boardRef.set(state).catch(e=>console.warn('FB save:',e));
+  if (firebaseOk && boardRef) {
+    suppressSyncUntil = Date.now() + 3000;
+    boardRef.set(state).catch(e=>console.warn('FB save:',e));
+  }
 }
 
 function startSync() {
@@ -465,7 +469,7 @@ function startSync() {
   boardRef.on('value', snap => {
     const data = snap.val();
     if (data) {
-      if (!modalIsOpen) { state = normalize(data); saveLocal(); render(); }
+      if (!modalIsOpen && Date.now() > suppressSyncUntil) { state = normalize(data); saveLocal(); render(); }
     }
   }, e => console.warn('FB read:', e));
   db.ref('.info/connected').on('value', snap => {
