@@ -957,10 +957,10 @@ function buildLabelSection(card, saveFn) {
   LABEL_COLORS.forEach(c=>{
     const opt = document.createElement('div');
     opt.className='cm-label-opt'+(card.labels.includes(c)?' on':'');
-    opt.style.background=c; opt.title=c;
+    opt.style.background=c; opt.title=c; opt.dataset.color=c;
     opt.addEventListener('click',()=>{
       opt.classList.toggle('on');
-      card.labels = LABEL_COLORS.filter(x=>picker.querySelector(`[style*="${x}"]`)?.classList.contains('on'));
+      card.labels = LABEL_COLORS.filter(x=>picker.querySelector(`[data-color="${x}"]`)?.classList.contains('on'));
       saveFn();
     });
     picker.appendChild(opt);
