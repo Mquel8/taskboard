@@ -1777,12 +1777,18 @@ function updateHeaderUser(user) {
 }
 
 if (auth) {
+  auth.getRedirectResult().catch(e => {
+    const errEl = document.getElementById('loginError');
+    errEl.textContent = 'เข้าสู่ระบบไม่สำเร็จ: ' + (e.message || e.code);
+    errEl.style.display = 'block';
+  });
+
   document.getElementById('loginGoogleBtn').addEventListener('click', async () => {
     const errEl = document.getElementById('loginError');
     errEl.style.display = 'none';
     try {
       await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-      await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+      auth.signInWithRedirect(new firebase.auth.GoogleAuthProvider());
     } catch(e) {
       errEl.textContent = 'เข้าสู่ระบบไม่สำเร็จ: ' + (e.message || e.code);
       errEl.style.display = 'block';
