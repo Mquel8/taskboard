@@ -116,6 +116,19 @@
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.18); border-radius: 3px; }
 
+    /* ══════════ AUTH ══════════ */
+    #loginOverlay { position:fixed; inset:0; background:linear-gradient(135deg,#1565C0 0%,#0D47A1 100%); display:flex; align-items:center; justify-content:center; z-index:9999; }
+    .login-card { background:white; border-radius:16px; padding:40px 48px; text-align:center; box-shadow:0 20px 60px rgba(0,0,0,0.35); max-width:380px; width:100%; }
+    .login-logo { font-size:24px; font-weight:800; color:#0052cc; margin-bottom:8px; display:flex; align-items:center; justify-content:center; gap:10px; }
+    .login-sub { font-size:14px; color:#5e6c84; margin-bottom:32px; }
+    .login-google-btn { display:flex; align-items:center; justify-content:center; gap:12px; width:100%; padding:12px 24px; border:2px solid #dfe1e6; border-radius:8px; background:white; font-size:15px; font-weight:600; color:#172b4d; cursor:pointer; font-family:inherit; transition:all 0.2s; }
+    .login-google-btn:hover { background:#f4f5f7; border-color:#0052cc; box-shadow:0 2px 8px rgba(0,82,204,0.15); }
+    .login-error { margin-top:16px; font-size:13px; color:#bf2600; background:#ffebe6; border-radius:6px; padding:8px 14px; display:none; }
+    .user-info { display:flex; align-items:center; gap:8px; }
+    .user-avatar { width:30px; height:30px; border-radius:50%; object-fit:cover; border:2px solid rgba(255,255,255,0.5); }
+    .user-avatar-fb { width:30px; height:30px; border-radius:50%; background:rgba(255,255,255,0.25); display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:white; flex-shrink:0; }
+    .user-name { color:rgba(255,255,255,0.9); font-size:13px; font-weight:600; max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
     /* ══════════ VIEW TOGGLE ══════════ */
     .view-toggle { display:flex; background:rgba(0,0,0,0.2); border-radius:6px; padding:2px; gap:2px; }
     .view-btn { border:none; border-radius:4px; padding:5px 12px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; color:rgba(255,255,255,0.75); background:transparent; transition:all 0.15s; white-space:nowrap; }
@@ -367,9 +380,39 @@
 <main class="board" id="board"></main>
 <div class="toast" id="toast"></div>
 
+<div id="loginOverlay">
+  <div class="login-card">
+    <div class="login-logo">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><rect x="2" y="4" width="8" height="16" rx="2" fill="#0052cc"/><rect x="13" y="4" width="9" height="10" rx="2" fill="#0052cc" opacity="0.6"/></svg>
+      TaskBoard
+    </div>
+    <div class="login-sub">กรุณาเข้าสู่ระบบเพื่อดำเนินการต่อ</div>
+    <button class="login-google-btn" id="loginGoogleBtn">
+      <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.08 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-3.59-13.46-8.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+      Sign in with Google
+    </button>
+    <div class="login-error" id="loginError"></div>
+  </div>
+</div>
+
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script>
+// ══════════════════════════════════════════════════════════════════════════════
+// ── Firebase Console Setup (ทำด้วยมือก่อน deploy) ───────────────────────────
+// 1. ไปที่ Firebase Console → Authentication → Sign-in method
+//    → เปิดใช้งาน Google Sign-in provider
+// 2. ไปที่ Authentication → Settings → Authorized domains
+//    → เพิ่ม mquel8.github.io
+// ══════════════════════════════════════════════════════════════════════════════
+
+// อีเมลที่ได้รับอนุญาต — เพิ่ม/ลบ email ที่นี่ได้เลย
+const ALLOWED_EMAILS = [
+  'chanachon.thk@gmail.com',
+  // 'email2@example.com',
+];
+
 const fbConfig = {
   apiKey: "AIzaSyD5ukP9VFM8BT-umWMgQkaPODao2qh4QEI",
   authDomain: "breezy-by-mp.firebaseapp.com",
@@ -379,8 +422,8 @@ const fbConfig = {
   messagingSenderId: "470137414471",
   appId: "1:470137414471:web:feb38f8927a314d8c0e262"
 };
-let db, boardRef, firebaseOk = false;
-try { firebase.initializeApp(fbConfig); db = firebase.database(); firebaseOk = true; }
+let db, auth, boardRef, firebaseOk = false;
+try { firebase.initializeApp(fbConfig); db = firebase.database(); auth = firebase.auth(); firebaseOk = true; }
 catch(e) { console.warn('Firebase init failed'); }
 
 const LABEL_COLORS = ['#61bd4f','#f2d600','#ff9f1a','#eb5a46','#c377e0','#0079bf','#00c2e0','#51e898','#ff78cb','#344563'];
@@ -481,7 +524,10 @@ function startSync() {
   });
 }
 
+let booted = false;
 function boot() {
+  if (booted) return;
+  booted = true;
   const local = loadLocal();
   state = normalize(local || defaultState());
   if (!local) save();
@@ -1702,8 +1748,64 @@ function fmtDatetime(iso) {
 let toastTimer;
 function toast(msg) { const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),2200); }
 
-// ── Start ──────────────────────────────────────────────────────────────────────
-boot();
+// ── Auth setup ─────────────────────────────────────────────────────────────────
+function showLogin() { document.getElementById('loginOverlay').style.display = 'flex'; }
+function hideLogin() { document.getElementById('loginOverlay').style.display = 'none'; }
+
+function updateHeaderUser(user) {
+  const hRight = document.querySelector('.header-right');
+  const existing = hRight.querySelector('.user-info');
+  if (existing) existing.remove();
+  const ui = document.createElement('div'); ui.className = 'user-info';
+  if (user.photoURL) {
+    const img = document.createElement('img'); img.className = 'user-avatar';
+    img.src = user.photoURL; img.alt = user.displayName || '';
+    ui.appendChild(img);
+  } else {
+    const fb = document.createElement('div'); fb.className = 'user-avatar-fb';
+    fb.textContent = (user.displayName || user.email || 'U').slice(0,1).toUpperCase();
+    ui.appendChild(fb);
+  }
+  const nameEl = document.createElement('span'); nameEl.className = 'user-name';
+  nameEl.textContent = user.displayName || user.email || '';
+  ui.appendChild(nameEl);
+  const logoutBtn = document.createElement('button'); logoutBtn.className = 'hbtn hbtn-ghost';
+  logoutBtn.textContent = 'Logout';
+  logoutBtn.addEventListener('click', () => auth.signOut());
+  ui.appendChild(logoutBtn);
+  hRight.appendChild(ui);
+}
+
+if (auth) {
+  document.getElementById('loginGoogleBtn').addEventListener('click', async () => {
+    const errEl = document.getElementById('loginError');
+    errEl.style.display = 'none';
+    try {
+      await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+      await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+    } catch(e) {
+      errEl.textContent = 'เข้าสู่ระบบไม่สำเร็จ: ' + (e.message || e.code);
+      errEl.style.display = 'block';
+    }
+  });
+
+  auth.onAuthStateChanged(user => {
+    if (!user) { showLogin(); return; }
+    if (!ALLOWED_EMAILS.includes(user.email)) {
+      auth.signOut();
+      const errEl = document.getElementById('loginError');
+      errEl.textContent = 'ขออภัย อีเมล ' + user.email + ' ไม่มีสิทธิ์เข้าใช้งาน';
+      errEl.style.display = 'block';
+      showLogin();
+      return;
+    }
+    hideLogin();
+    updateHeaderUser(user);
+    boot();
+  });
+} else {
+  boot();
+}
 </script>
 </body>
 </html>
